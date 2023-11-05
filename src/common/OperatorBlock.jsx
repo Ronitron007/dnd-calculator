@@ -38,7 +38,7 @@ export default function OperatorBlock(props) {
     if (!data.targetConnected && targetIsConnected) {
       setTargetConnected(false)
     }
-    if (data.sourceConnected === false && sourceIsConnected) {
+    if (!data.sourceConnected && sourceIsConnected) {
       setSourceConnected(false)
     }
   }, [data])

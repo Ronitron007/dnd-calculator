@@ -2,6 +2,7 @@ import { createSlice } from '@reduxjs/toolkit'
 import { nanoid } from 'nanoid'
 import { applyNodeChanges, applyEdgeChanges } from 'reactflow'
 import { current } from 'immer'
+
 const initialState = {
   nodes: [],
   edges: [],
@@ -36,7 +37,7 @@ function calculatedValue(resultNode, nodeObj) {
   return value
 }
 
-function findTargetId(node, nodeObj) {
+function findResultBlockId(node, nodeObj) {
   let targetId = node.data.target
   while (nodeObj[targetId].data.targetConnected) {
     targetId = nodeObj[targetId].data.target
@@ -63,6 +64,9 @@ export const flowSlice = createSlice({
   name: 'reactFlow',
   initialState,
   reducers: {
+    reset: () => {
+      return initialState
+    },
     addNode: (state, action) => {
       const id = nanoid(6)
       const node = {
@@ -88,7 +92,6 @@ export const flowSlice = createSlice({
       const id = nanoid(6)
       const isResultEdge =
         state.nodeObj[action.payload.target].type === 'Result'
-
       state.nodes.map((node) => {
         if (node.id === action.payload.source) {
           node.data.targetConnected = true
@@ -142,7 +145,7 @@ export const flowSlice = createSlice({
         }
       })
       if (state.nodeObj[action.payload.id].data.connectedToResult) {
-        let targetID = findTargetId(
+        let targetID = findResultBlockId(
           current(state.nodeObj[action.payload.id]),
           current(state.nodeObj),
         )
@@ -214,6 +217,7 @@ export const {
   updateNode,
   addNode,
   deleteEdge,
+  reset,
 } = flowSlice.actions
 
 export default flowSlice.reducer

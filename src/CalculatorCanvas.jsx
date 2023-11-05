@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import styled from 'styled-components'
 import ReactFlow, { ReactFlowProvider, Controls, Background } from 'reactflow'
 import { useSelector, useDispatch } from 'react-redux'
@@ -8,19 +8,29 @@ import {
   onEdgesChange,
   addEdge,
   addNode,
+  reset,
 } from './features/FlowSlice'
 import PrimitiveBlock from './common/PrimitiveBlock'
-
 import 'reactflow/dist/style.css'
 import OperatorBlock from './common/OperatorBlock'
 import ResultBlock from './common/ResultBlock'
 import BlockToolbar from './common/BlockToolbar'
+import { REDOstate, UNDOstate } from './features/UndoReducer'
 
 const nodeTypes = {
   Primitive: PrimitiveBlock,
   Operator: OperatorBlock,
   Result: ResultBlock,
 }
+
+const Footer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  position: fixed;
+  bottom: 0;
+`
 
 const Button = styled.button`
   background-color: red;
@@ -32,19 +42,24 @@ const Button = styled.button`
     border: none;
   }
   margin: 10px;
+  &:disabled {
+    cursor: not-allowed;
+    filter: grayscale(100%);
+  }
 `
 
 const CanvasWrapper = (props) => {
-  const { className, children } = props
-  const nodes = useSelector((state) => state.reactFlow.nodes)
-  const edges = useSelector((state) => state.reactFlow.edges)
+  const { className } = props
+  const pastStoreVal = useSelector((state) => state.reactFlow.past)
+  const futureStoreVal = useSelector((state) => state.reactFlow.future)
+  const nodes = useSelector((state) => state.reactFlow.present.nodes)
+  const edges = useSelector((state) => state.reactFlow.present.edges)
+  const nodesObject = useSelector((state) => state.reactFlow.present.nodeObj)
   const [viewPortInfo, setViewPort] = useState({ x: 0, y: 0, zoom: 1 })
-  const nodesObject = useSelector((state) => state.reactFlow.nodeObj)
   const reactFlowWrapper = useRef(null)
   const dispatch = useDispatch()
   const nodeCreater = useCallback(
     (cordinates, type) => {
-      const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect()
       dispatch(
         addNode({
           x:
@@ -59,6 +74,25 @@ const CanvasWrapper = (props) => {
     },
     [dispatch, viewPortInfo, reactFlowWrapper],
   )
+  const handleUndo = useCallback(
+    (event) => {
+      if (event.metaKey && event.key === 'z') {
+        event.preventDefault()
+        pastStoreVal.length > 0 ? dispatch(UNDOstate()) : null
+      } else if (event.metaKey && event.key === 'y') {
+        event.preventDefault()
+        futureStoreVal.length > 0 ? dispatch(REDOstate()) : null
+      }
+    },
+    [pastStoreVal, futureStoreVal, dispatch],
+  )
+  useEffect(() => {
+    document.addEventListener('keydown', handleUndo)
+
+    return () => {
+      document.removeEventListener('keydown', handleUndo)
+    }
+  }, [])
 
   return (
     <>
@@ -101,6 +135,32 @@ const CanvasWrapper = (props) => {
             <Background />
           </ReactFlow>
         </ReactFlowProvider>
+        <Footer>
+          <Button
+            disabled={pastStoreVal.length === 0}
+            onClick={() => {
+              dispatch(UNDOstate())
+            }}
+          >
+            Undo Action
+          </Button>
+          <Button
+            disabled={futureStoreVal.length === 0}
+            onClick={() => {
+              dispatch(REDOstate())
+            }}
+          >
+            Redo Action
+          </Button>
+          <Button
+            disabled={nodes.length === 0}
+            onClick={() => {
+              dispatch(reset())
+            }}
+          >
+            Reset
+          </Button>
+        </Footer>
       </div>
     </>
   )
